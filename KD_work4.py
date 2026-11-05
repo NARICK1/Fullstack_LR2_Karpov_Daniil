@@ -1,7 +1,17 @@
 import io
 import sys
 from PyQt6 import uic
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
+
+# Пользовательские исключения
+class EmptyFieldError(Exception):
+    pass
+
+class InvalidNameError(Exception):
+    pass
+
+class DuplicateStudentError(Exception):
+    pass
 
 # XML-разметка интерфейса из Qt Designer
 tempKDO = """<?xml version="1.0" encoding="UTF-8"?>
@@ -132,36 +142,83 @@ class GroupList_KDO(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # Загружаем интерфейс из строковой константы
+        # Загружаем интерфейс из строки
         f = io.StringIO(tempKDO)
         uic.loadUi(f, self)
 
-        # Подгоняем размер кнопки под её надпись
+        # Подгоняем размер кнопки
         self.addStudentBtn.adjustSize()
 
         # Подключаем кнопку к обработчику
         self.addStudentBtn.clicked.connect(self.status_KDO)
 
-    # Обработчик добавления студента в список
+    # Проверка имени или фамилии
+    def check_name_KDO(self, value, field_name):
+
+        # Проверяем пустое поле
+        if not value:
+            raise EmptyFieldError(
+                f"Поле «{field_name}» не должно быть пустым."
+            )
+
+        # Проверяем минимальную длину
+        if len(value) < 3:
+            raise InvalidNameError(
+                f"Поле «{field_name}» должно содержать "
+                "не менее 3 букв."
+            )
+
+        # Проверяем, что введены только буквы
+        if not value.isalpha():
+            raise InvalidNameError(
+                f"Поле «{field_name}» должно содержать "
+                "только буквы, без цифр и пробелов."
+            )
+
+        # Делаем первую букву заглавной
+        return value.capitalize()
+
+    # Обработчик добавления студента
     def status_KDO(self):
 
-        # Получаем имя и фамилию, удаляем лишние пробелы
-        name = self.Name.text().strip()
-        lastname = self.LastName.text().strip()
+        try:
+            # Получаем данные из полей
+            name = self.Name.text().strip()
+            lastname = self.LastName.text().strip()
 
-        # Проверяем, что оба поля заполнены
-        if name and lastname:
+            # Проверяем имя и фамилию
+            name = self.check_name_KDO(name, "Имя")
+            lastname = self.check_name_KDO(lastname, "Фамилия")
 
-            # Формируем запись и добавляем её в список
+            # Формируем запись
             student = lastname + " " + name
+
+            # Проверяем наличие дубликата
+            for i in range(self.presenceList.count()):
+                if self.presenceList.item(i).text().lower() == student.lower():
+                    raise DuplicateStudentError(
+                        "Этот студент уже есть в списке."
+                    )
+
+            # Добавляем студента
             self.presenceList.addItem(student)
 
-            # Очищаем поля после добавления
+            # Очищаем поля
             self.Name.clear()
             self.LastName.clear()
 
             # Возвращаем курсор в поле имени
             self.Name.setFocus()
+
+        except (EmptyFieldError, InvalidNameError,
+                DuplicateStudentError) as error:
+
+            # Показываем сообщение об ошибке
+            QMessageBox.warning(
+                self,
+                "Ошибка ввода",
+                str(error)
+            )
 
 # Запуск приложения
 if __name__ == "__main__":

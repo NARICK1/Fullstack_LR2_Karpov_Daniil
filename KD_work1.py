@@ -6,6 +6,10 @@ class MyWidget(QMainWindow):
         super().__init__()
         #Загружаем ui из qt дизайнера
         uic.loadUi('LR2_Karpov.ui', self)
+        #дописываем кнопку в методе run
+        self.pushButton.clicked.connect(self.run)
+    def run(self):
+        self.label.setText("Hello, Karpov")
 #проверка, что файл запущен напрямую
 if __name__ == "__main__":
     app = QApplication(sys.argv)
